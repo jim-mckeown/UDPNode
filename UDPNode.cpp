@@ -1,7 +1,17 @@
-/*
-Version 0.2.0
-2026 July 19
-*/
+/**
+ * @file UDPNode.cpp
+ * @brief Implementation of the UDPNode Parameter Server and Messaging Engine
+ * 
+ * Encapsulates network packet parsing, LittleFS file read/write operations,
+ * background Wi-Fi health monitoring, and NTP time synchronization routines.
+ * 
+ * @version 1.0.0
+ * @date July 2026
+ * @author Jim McKeown
+ * @license MIT License
+ * 
+ * Repository: https://github.com/jim-mckeown/UDPNode
+ */
 
 #include "UDPNode.h"
 #include <WiFiManager.h>
