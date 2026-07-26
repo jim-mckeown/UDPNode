@@ -1,7 +1,25 @@
-/*
-Version 0.2.0
-2026 July 19
-*/
+/**
+ * @file UDPNode.h
+ * @brief Decentralized UDP Parameter Server and Messaging Framework for ESP32
+ * 
+ * A lightweight, non-blocking C++ class that standardizes network communication,
+ * parameter persistence, and critical alert dispatching across decentralized 
+ * ESP32 sensor nodes. Designed to interface directly with the Clock Supervisor
+ * audio engine.
+ * 
+ * Core Features:
+ *  - Unified 3-level status state machine (0 = Ready, 1 = Info, 2 = Critical)
+ *  - Automatic LittleFS parameter registration and persistent flash binding
+ *  - Standalone Wi-Fi auto-reconnect engine and ArduinoOTA integration
+ *  - Standardized "msg dd01" critical trigger dispatcher
+ * 
+ * @version 1.0.0
+ * @date July 2026
+ * @author Jim McKeown
+ * @license MIT License
+ * 
+ * Repository: https://github.com/jim-mckeown/UDPNode
+ */
 
 #ifndef UDP_NODE_H
 #define UDP_NODE_H
