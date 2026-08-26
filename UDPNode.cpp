@@ -108,16 +108,42 @@ void UDPNode::handlePacket(String packetText, IPAddress remoteIP, uint16_t remot
     static String staged_pass = "";    
 
     // Automatically add interacting nodes to baseline communication list
-    if (cmd != "status ?" && cmd != "list_poll") {
-        // Deduplicate and track target IPs for general alerts if necessary
+if (cmd != "status" && cmd != "list_poll") { 
         bool known = false;
-        for (const auto& ip : _targetIPs) { if (ip == remoteIP.toString()) known = true; }
+        for (const auto& t : _targetIPs) { if (t.ipAddress == remoteIP.toString()) known = true; }
         if (!known && remoteIP.toString() != "0.0.0.0") {
-            _targetIPs.push_back(remoteIP.toString());
+            _targetIPs.push_back({remoteIP.toString(), 0});
             saveIPList();
         }
     }
 
+if (cmd == "status") {
+        int currentStatus = 0;
+        bool known = false;
+        
+        for (auto& t : _targetIPs) {
+            if (t.ipAddress == remoteIP.toString()) {
+                known = true;
+                currentStatus = t.statusFlag;
+                // CLEAR the flag only for the supervisor that just requested it
+                if (valStr == "?") t.statusFlag = 0; 
+                else t.statusFlag = valStr.toInt(); // Allow manual remote override
+                break;
+            }
+        }
+        
+        // Auto-register new supervisors that ask for status
+        if (!known && remoteIP.toString() != "0.0.0.0") {
+            int newStat = (valStr == "?") ? 0 : valStr.toInt();
+            _targetIPs.push_back({remoteIP.toString(), newStat});
+            saveIPList();
+        }
+        
+        if (valStr == "?") reply(remoteIP, remotePort, "OK status " + String(currentStatus));
+        else reply(remoteIP, remotePort, "OK status " + valStr);
+        return;
+    }    
+    
     // --- Command Group A: Polling Engine Commands ---
     if (cmd == "list_poll") {
         reply(remoteIP, remotePort, _pollList.empty() ? "Poll list empty" : "");
@@ -242,12 +268,10 @@ String UDPNode::getFormattedTime() {
 }
 
 void UDPNode::sendAlert(const String& alertMessage) {
-    // Stripped the timestamp formatting so the raw command (e.g., "msg 0501") 
-    // can be properly parsed by the receiving node's handlePacket engine.
-    for (const String& ipStr : _targetIPs) {
+    for (const auto& t : _targetIPs) {
         IPAddress target;
-        if (target.fromString(ipStr)) { 
-            _udp.beginPacket(target, _localPort); // Changed 9999 to _localPort (8888)
+        if (target.fromString(t.ipAddress)) { 
+            _udp.beginPacket(target, _localPort); 
             _udp.print(alertMessage); 
             _udp.endPacket(); 
         }
@@ -268,6 +292,40 @@ void UDPNode::saveParam(const Parameter& param) { File file = LittleFS.open(para
 void UDPNode::loadParam(const Parameter& param) { if (!LittleFS.exists(param.filename)) return; File file = LittleFS.open(param.filename, "r"); if (!file) return; String content = file.readString(); content.trim(); file.close(); if (param.type == PARAM_INT) *(int*)param.varPtr = content.toInt(); if (param.type == PARAM_FLOAT) *(float*)param.varPtr = content.toFloat(); if (param.type == PARAM_STRING) *(String*)param.varPtr = content; }
 void UDPNode::savePollListToFS() { File file = LittleFS.open("/poll_list.txt", "w"); if (!file) return; for (const auto& t : _pollList) { file.printf("%02d,%s,%s\n", t.id, t.ipAddress.c_str(), t.deviceName.c_str()); } file.close(); }
 void UDPNode::loadPollListFromFS() { _pollList.clear(); File file = LittleFS.open("/poll_list.txt", "r"); if (!file) return; while (file.available()) { String line = file.readStringUntil('\n'); line.trim(); if (line.length() == 0) continue; int first = line.indexOf(','); int second = line.indexOf(',', first + 1); if (first > 0 && second > 0) { _pollList.push_back({line.substring(0, first).toInt(), line.substring(first + 1, second), line.substring(second + 1), 0, -1}); } } file.close(); }
-void UDPNode::saveIPList() { File file = LittleFS.open("/iplist.cfg", "w"); if (!file) return; for (const auto& ip : _targetIPs) file.println(ip); file.close(); }
-void UDPNode::loadIPList() { if (!LittleFS.exists("/iplist.cfg")) return; File file = LittleFS.open("/iplist.cfg", "r"); if (!file) return; while (file.available()) { String ip = file.readStringUntil('\n'); ip.trim(); if (ip.length() >= 7) _targetIPs.push_back(ip); } file.close(); }
+
+void UDPNode::saveIPList() { 
+    File file = LittleFS.open("/iplist.cfg", "w"); 
+    if (!file) return; 
+    for (const auto& t : _targetIPs) file.println(t.ipAddress); 
+    file.close(); 
+}
+
+void UDPNode::loadIPList() { 
+    if (!LittleFS.exists("/iplist.cfg")) return; 
+    File file = LittleFS.open("/iplist.cfg", "r"); 
+    if (!file) return; 
+    while (file.available()) { 
+        String ip = file.readStringUntil('\n'); 
+        ip.trim(); 
+        if (ip.length() >= 7) _targetIPs.push_back({ip, 0}); 
+    } 
+    file.close(); 
+}
+
 void UDPNode::forceSaveParam(const String& command) { for (const auto& param : _params) { if (param.command.equalsIgnoreCase(command)) { if (param.persistent && !param.readOnly) saveParam(param); return; } } }
+
+void UDPNode::setDistributedStatus(int newStatus) {
+    // When an event happens, flag it as UNREAD for every known supervisor
+    for (auto& t : _targetIPs) {
+        t.statusFlag = newStatus;
+    }
+}
+
+int UDPNode::getHighestUnreadStatus() {
+    // Allows the local hardware to check if ANY supervisor still hasn't read the alert
+    int highest = 0;
+    for (const auto& t : _targetIPs) {
+        if (t.statusFlag > highest) highest = t.statusFlag;
+    }
+    return highest;
+}
