@@ -70,6 +70,12 @@ void UDPNode::loop() {
     int packetSize = _udp.parsePacket();
     if (packetSize) {
         String remoteIP = _udp.remoteIP().toString();
+
+        // Silently drop any packets sent by this device to itself
+        if (remoteIP == WiFi.localIP().toString()) {
+            _udp.flush(); // Clear the buffer
+            return;       // Stop processing to prevent echo and auto-registration
+        }        
         
         // Watchdog Activity Reset: Any traffic from an IP proves it's alive
         for (auto& target : _pollList) {
@@ -167,6 +173,39 @@ if (cmd == "status") {
         return;
     }
 
+    if (cmd == "remove_poll") {
+        String ipToRemove = valStr;
+        bool removed = false;
+        
+        // 1. Scrub from Polling Engine List
+        for (auto it = _pollList.begin(); it != _pollList.end(); ) {
+            if (it->ipAddress == ipToRemove) {
+                it = _pollList.erase(it);
+                removed = true;
+            } else {
+                ++it;
+            }
+        }
+
+        // 2. Scrub from Status/Auto-Registration List
+        for (auto it = _targetIPs.begin(); it != _targetIPs.end(); ) {
+            if (it->ipAddress == ipToRemove) {
+                it = _targetIPs.erase(it);
+                removed = true;
+            } else {
+                ++it;
+            }
+        }
+        
+        if (removed) {
+            saveIPList(); // Commit changes to LittleFS so it doesn't come back on reboot
+            reply(remoteIP, remotePort, "OK: Removed " + ipToRemove);
+        } else {
+            reply(remoteIP, remotePort, "ERR: IP not found in any list");
+        }
+        return;
+    }
+    
     // --- Command Group B: Audio Message Engine ---
     if (cmd == "msg") {
         if (valStr == "?") {
