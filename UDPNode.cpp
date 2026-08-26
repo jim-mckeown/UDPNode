@@ -329,3 +329,28 @@ int UDPNode::getHighestUnreadStatus() {
     }
     return highest;
 }
+
+bool UDPNode::removeTargetIP(String ipAddress) {
+    bool foundAndRemoved = false;
+    
+    // Iterate through your list of stored IPs
+    for (auto it = targetNodes.begin(); it != targetNodes.end(); ) {
+        // Assuming targetNodes holds Strings or an object with an .ip property
+        if (*it == ipAddress) { 
+            it = targetNodes.erase(it);
+            foundAndRemoved = true;
+            Serial.println("[UDPNode] Removed IP from list: " + ipAddress);
+        } else {
+            ++it;
+        }
+    }
+
+    if (foundAndRemoved) {
+        // Call your existing function that commits the vector to LittleFS/SPIFFS
+        saveToFile(); 
+    } else {
+        Serial.println("[UDPNode] IP not found in list: " + ipAddress);
+    }
+
+    return foundAndRemoved;
+}
