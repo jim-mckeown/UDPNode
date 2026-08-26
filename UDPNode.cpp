@@ -98,6 +98,12 @@ void UDPNode::handlePacket(String packetText, IPAddress remoteIP, uint16_t remot
     String valStr = (spaceIndex == -1) ? "" : packetText.substring(spaceIndex + 1);
     cmd.trim(); valStr.trim();
 
+    // LOOP BREAKER: Silently drop incoming automated replies ("OK" or "ERR") 
+    // from other nodes to prevent infinite network ping-pong loops.
+    if (cmd == "OK" || cmd == "ERR" || cmd == "OK:" || cmd == "ERR:") {
+        return; 
+    }
+
     static String staged_ssid = "";
     static String staged_pass = "";    
 
@@ -236,10 +242,15 @@ String UDPNode::getFormattedTime() {
 }
 
 void UDPNode::sendAlert(const String& alertMessage) {
-    String formattedMsg = "[" + getFormattedTime() + "] ALERT: " + alertMessage;
+    // Stripped the timestamp formatting so the raw command (e.g., "msg 0501") 
+    // can be properly parsed by the receiving node's handlePacket engine.
     for (const String& ipStr : _targetIPs) {
         IPAddress target;
-        if (target.fromString(ipStr)) { _udp.beginPacket(target, 9999); _udp.print(formattedMsg); _udp.endPacket(); }
+        if (target.fromString(ipStr)) { 
+            _udp.beginPacket(target, _localPort); // Changed 9999 to _localPort (8888)
+            _udp.print(alertMessage); 
+            _udp.endPacket(); 
+        }
     }
 }
 
