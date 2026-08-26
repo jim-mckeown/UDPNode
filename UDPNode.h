@@ -70,7 +70,11 @@ private:
     // Storage Vectors
     std::vector<Parameter> _params;
     std::vector<PollTarget> _pollList;
-    std::vector<String> _targetIPs; // Dynamic unicast alert targets
+    struct SupervisorTarget {
+    String ipAddress;
+    int statusFlag;
+    };
+    std::vector<SupervisorTarget> _targetIPs;
     
     // Callbacks
     MsgCallback _onMessageReceived = nullptr;
@@ -122,6 +126,8 @@ public:
     // Manual Poll Target Controls
     bool addPollTarget(int id, String ip, String name = "Pending Name");
     bool removePollTarget(int id);
+    void setDistributedStatus(int newStatus);
+    int getHighestUnreadStatus();
 
     // Time Utilities
     void configureTime(long gmtOffset_sec, int daylightOffset_sec, const char* ntpServer = "pool.ntp.org");
