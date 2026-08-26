@@ -133,6 +133,10 @@ public:
     void configureTime(long gmtOffset_sec, int daylightOffset_sec, const char* ntpServer = "pool.ntp.org");
     String getFormattedTime();
     void sendAlert(const String& alertMessage);
+    
+    // Network command support to remove an IP from the target list
+    bool removeTargetIP(String ipAddress);
+
 };
 
 #endif
