@@ -372,21 +372,21 @@ int UDPNode::getHighestUnreadStatus() {
 bool UDPNode::removeTargetIP(String ipAddress) {
     bool foundAndRemoved = false;
     
-    // Iterate through your list of stored IPs
-    for (auto it = targetNodes.begin(); it != targetNodes.end(); ) {
-        // Assuming targetNodes holds Strings or an object with an .ip property
-        if (*it == ipAddress) { 
-            it = targetNodes.erase(it);
+    // Iterate through the correct struct vector: _targetIPs
+    for (auto it = _targetIPs.begin(); it != _targetIPs.end(); ) {
+        // Access the ipAddress string inside the SupervisorTarget struct
+        if (it->ipAddress == ipAddress) { 
+            it = _targetIPs.erase(it);
             foundAndRemoved = true;
-            Serial.println("[UDPNode] Removed IP from list: " + ipAddress);
+            Serial.println("[UDPNode] Removed IP from supervisor list: " + ipAddress);
         } else {
             ++it;
         }
     }
 
     if (foundAndRemoved) {
-        // Call your existing function that commits the vector to LittleFS/SPIFFS
-        saveToFile(); 
+        // Call the correct LittleFS save function
+        saveIPList(); 
     } else {
         Serial.println("[UDPNode] IP not found in list: " + ipAddress);
     }
