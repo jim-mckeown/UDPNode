@@ -13,7 +13,7 @@
  *  - Standalone Wi-Fi auto-reconnect engine and ArduinoOTA integration
  *  - Standardized "msg dd01" critical trigger dispatcher
  * 
- * @version 0.1.1
+ * @version 0.1.2
  * @date July 2026
  * @author Jim McKeown
  * @license MIT License
