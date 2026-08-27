@@ -5,7 +5,7 @@
  * Encapsulates network packet parsing, LittleFS file read/write operations,
  * background Wi-Fi health monitoring, and NTP time synchronization routines.
  * 
- * @version 1.0.0
+ * @version 0.1.0
  * @date July 2026
  * @author Jim McKeown
  * @license MIT License
