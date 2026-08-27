@@ -13,7 +13,7 @@
  *  - Standalone Wi-Fi auto-reconnect engine and ArduinoOTA integration
  *  - Standardized "msg dd01" critical trigger dispatcher
  * 
- * @version 0.1.2
+ * @version 0.1.3
  * @date July 2026
  * @author Jim McKeown
  * @license MIT License
@@ -31,14 +31,8 @@
 #include <time.h>
 #include <vector>
 
-// Supported parameter datatypes for runtime configuration
-enum ParamType {
-    PARAM_INT,
-    PARAM_FLOAT,
-    PARAM_STRING
-};
+enum ParamType { PARAM_INT, PARAM_FLOAT, PARAM_STRING };
 
-// Structure to bind a command string to a physical runtime variable
 struct Parameter {
     String command;
     ParamType type;
@@ -48,7 +42,6 @@ struct Parameter {
     bool readOnly;   
 };
 
-// Structure to hold active tracking targets for the watchdog engine
 struct PollTarget {
     int id;
     String ipAddress;
@@ -57,86 +50,79 @@ struct PollTarget {
     int lastStatus;
 };
 
-// Callbacks types
 typedef void (*MsgCallback)(int sensorId, int messageId);
 typedef void (*CommandCallback)(String key, String value);
 typedef void (*LinkCallback)(int sensorId, bool isAlive); 
 
 class UDPNode {
+public:
+    // Struct moved to public scope so main.cpp can inspect target vectors
+    struct SupervisorTarget {
+        String ipAddress;
+        int statusFlag;
+    };
+
 private:
     WiFiUDP _udp;
     unsigned int _localPort;
     
-    // Storage Vectors
     std::vector<Parameter> _params;
     std::vector<PollTarget> _pollList;
-    struct SupervisorTarget {
-    String ipAddress;
-    int statusFlag;
-    };
     std::vector<SupervisorTarget> _targetIPs;
     
-    // Callbacks
     MsgCallback _onMessageReceived = nullptr;
     CommandCallback _onCommandReceived = nullptr;
     LinkCallback _onLinkStatusChange = nullptr; 
 
-    // Time & NTP Settings
     const char* _ntpServer = "pool.ntp.org";
     long _gmtOffset_sec = 0;
     int _daylightOffset_sec = 0;
 
-    // Watchdog Timer Engine
     unsigned long _lastPollTime = 0;
     const unsigned long _pollInterval = 10000; 
 
-    // Internal Processing Engines
     void handlePacket(String packetText, IPAddress remoteIP, uint16_t remotePort);
     void reply(IPAddress ip, uint16_t port, String msg);
     
-    // Persistence Handlers
     void saveParam(const Parameter& param);
     void loadParam(const Parameter& param);
     void savePollListToFS();
     void loadPollListFromFS();
     void saveIPList();
     void loadIPList();
-    
     void pingTargets(); 
 
 public:
     UDPNode(unsigned int port = 8888);
     ~UDPNode();
 
-    // Initialization & Lifecycle
     bool begin(const char* apName = "Supervisor_Node_AP");
     void loop(); 
 
-    // Parameter Registration Engine
     void registerParam(const String& command, int* varPtr, bool persistent = true, bool readOnly = false);
     void registerParam(const String& command, float* varPtr, bool persistent = true, bool readOnly = false);
     void registerParam(const String& command, String* varPtr, bool persistent = true, bool readOnly = false);
     void forceSaveParam(const String& command);
 
-    // Callback Setters
     void onMessage(MsgCallback callback);
     void onCommand(CommandCallback callback);
     void onLinkStatus(LinkCallback callback); 
 
-    // Manual Poll Target Controls
     bool addPollTarget(int id, String ip, String name = "Pending Name");
     bool removePollTarget(int id);
+    bool removeTargetIP(String ipAddress);
+
     void setDistributedStatus(int newStatus);
     int getHighestUnreadStatus();
 
-    // Time Utilities
     void configureTime(long gmtOffset_sec, int daylightOffset_sec, const char* ntpServer = "pool.ntp.org");
     String getFormattedTime();
     void sendAlert(const String& alertMessage);
-    
-    // Network command support to remove an IP from the target list
-    bool removeTargetIP(String ipAddress);
 
+    // --- Visibility Accessors & Serial Diagnostics ---
+    const std::vector<PollTarget>& getPollList() const;
+    const std::vector<SupervisorTarget>& getTargetIPs() const;
+    void printSummary(Stream& out = Serial);
 };
 
 #endif
