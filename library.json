@@ -1,0 +1,30 @@
+{
+  "name": "UDPNode",
+  "version": "0.1.1",
+  "description": "Decentralized UDP parameter server and messaging framework for ESP32 nodes.",
+  "keywords": [
+    "esp32",
+    "udp",
+    "parameter-server",
+    "embedded"
+  ],
+  "authors": [
+    {
+      "name": "Jim McKeown",
+      "maintainer": true
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jim-mckeown/UDPNode.git"
+  },
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "export": {
+    "include": [
+      "UDPNode.h",
+      "UDPNode.cpp",
+      "library.json"
+    ]
+  }
+}
