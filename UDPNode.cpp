@@ -5,7 +5,7 @@
  * Encapsulates network packet parsing, LittleFS file read/write operations,
  * background Wi-Fi health monitoring, and NTP time synchronization routines.
  * 
- * @version 0.1.2
+ * @version 0.1.3
  * @date July 2026
  * @author Jim McKeown
  * @license MIT License
@@ -155,6 +155,14 @@ if (cmd == "status") {
         reply(remoteIP, remotePort, _pollList.empty() ? "Poll list empty" : "");
         for (const auto& t : _pollList) {
             reply(remoteIP, remotePort, String(t.id) + "," + t.ipAddress + "," + t.deviceName + "\n");
+        }
+        return;
+    }
+
+    if (cmd == "list_targets" || cmd == "list_supervisors") {
+        reply(remoteIP, remotePort, _targetIPs.empty() ? "Target list empty" : "");
+        for (const auto& t : _targetIPs) {
+            reply(remoteIP, remotePort, t.ipAddress + ",status=" + String(t.statusFlag) + "\n");
         }
         return;
     }
@@ -393,3 +401,37 @@ bool UDPNode::removeTargetIP(String ipAddress) {
 
     return foundAndRemoved;
 }
+
+// --- Visibility Methods ---
+
+const std::vector<PollTarget>& UDPNode::getPollList() const {
+    return _pollList;
+}
+
+const std::vector<UDPNode::SupervisorTarget>& UDPNode::getTargetIPs() const {
+    return _targetIPs;
+}
+
+void UDPNode::printSummary(Stream& out) {
+    out.println("\n=== Monitored Poll Targets (_pollList) ===");
+    if (_pollList.empty()) {
+        out.println("  (None registered)");
+    } else {
+        for (const auto& t : _pollList) {
+            out.printf("  [ID %02d] %-15s - %-15s (Missed Checks: %d)\n", 
+                       t.id, t.ipAddress.c_str(), t.deviceName.c_str(), t.missedChecks);
+        }
+    }
+
+    out.println("\n=== Supervisor Target Nodes (_targetIPs) ===");
+    if (_targetIPs.empty()) {
+        out.println("  (None registered)");
+    } else {
+        for (const auto& t : _targetIPs) {
+            out.printf("  %-15s (Unread Status Flag: %d)\n", 
+                       t.ipAddress.c_str(), t.statusFlag);
+        }
+    }
+    out.println("===========================================\n");
+}
+
